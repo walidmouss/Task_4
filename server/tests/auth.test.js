@@ -1,10 +1,10 @@
-import http from 'http';
-import mongoose from 'mongoose';
-import crypto from 'crypto';
+import http from "http";
+import mongoose from "mongoose";
+import crypto from "crypto";
 
-import app from '../src/app.js';
-import { connectDB } from '../src/config/db.js';
-import { User } from '../src/models/User.js';
+import app from "../src/app.js";
+import { connectDB } from "../src/config/db.js";
+import { User } from "../src/models/User.js";
 
 // Helper to spin up the Express application on an ephemeral port so that the
 // tests exercise the real HTTP stack exactly as a user would.
@@ -15,12 +15,12 @@ async function startHttpServer() {
   });
 }
 
-describe('Authentication controller integration', () => {
+describe("Authentication controller integration", () => {
   const uniqueSuffix = crypto.randomUUID();
   const credentials = {
     name: `Test Runner ${uniqueSuffix}`,
     email: `test.runner.${uniqueSuffix}@example.com`,
-    password: `P@ssw0rd-${uniqueSuffix.slice(0, 8)}`
+    password: `P@ssw0rd-${uniqueSuffix.slice(0, 8)}`,
   };
 
   let serverInstance;
@@ -45,11 +45,11 @@ describe('Authentication controller integration', () => {
     await mongoose.connection.close();
   });
 
-  test('registers a brand-new user and returns a JWT for immediate use', async () => {
+  test("registers a brand-new user and returns a JWT for immediate use", async () => {
     const response = await fetch(`${baseUrl}/auth/register`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(credentials)
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(credentials),
     });
 
     const payload = await response.json();
@@ -59,7 +59,7 @@ describe('Authentication controller integration', () => {
     expect(response.status).toBe(201);
     expect(payload.token).toBeTruthy();
     expect(payload.user.email).toBe(credentials.email.toLowerCase());
-    expect(payload.user).not.toHaveProperty('passwordHash');
+    expect(payload.user).not.toHaveProperty("passwordHash");
 
     issuedToken = payload.token;
   });
@@ -72,14 +72,28 @@ describe('Authentication controller integration', () => {
   - expect the returned user profile to match the registered user
   - store the issued token for use in subsequent tests
   */
-  test('authenticates the same user and issues a fresh JWT', async () => {
-    // This test will always fail until the TODO above is implemented.
-    expect(true).toBe(false);
+  test("authenticates the same user and issues a fresh JWT", async () => {
+    const response = await fetch(`${baseUrl}/auth/login`, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({
+        email: credentials.email,
+        password: credentials.password,
+      }),
+    });
+    const payload = await response.json();
+    // Successful login should return 200 alongside a token and the
+    expect(response.status).toBe(200);
+    expect(payload.token).toBeTruthy();
+    expect(payload.user.email).toBe(credentials.email.toLowerCase());
+
+    // store the new token for later tests
+    issuedToken = payload.token;
   });
 
-  test('returns the public profile for the currently authenticated user', async () => {
+  test("returns the public profile for the currently authenticated user", async () => {
     const response = await fetch(`${baseUrl}/auth/me`, {
-      headers: { Authorization: `Bearer ${issuedToken}` }
+      headers: { Authorization: `Bearer ${issuedToken}` },
     });
 
     const payload = await response.json();
@@ -87,6 +101,6 @@ describe('Authentication controller integration', () => {
     // A valid token must yield the sanitized user profile.
     expect(response.status).toBe(200);
     expect(payload.user.email).toBe(credentials.email.toLowerCase());
-    expect(payload.user).not.toHaveProperty('passwordHash');
+    expect(payload.user).not.toHaveProperty("passwordHash");
   });
 });

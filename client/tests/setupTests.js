@@ -1,31 +1,33 @@
-import { jest } from '@jest/globals';
-import '@testing-library/jest-dom';
+import { jest } from "@jest/globals";
+import "@testing-library/jest-dom";
 
-import crypto from 'crypto';
-import path from 'path';
-import { fileURLToPath } from 'url';
-import { spawn } from 'child_process';
+import crypto from "crypto";
+import path from "path";
+import { fileURLToPath } from "url";
+import { spawn } from "child_process";
 
-import axios from 'axios';
-import httpAdapter from 'axios/lib/adapters/http.js';
-import dotenv from 'dotenv';
+import axios from "axios";
+import httpAdapter from "axios/lib/adapters/http.js";
+import dotenv from "dotenv";
 
 jest.setTimeout(60000);
 
 const currentFilePath = fileURLToPath(import.meta.url);
-const repoRoot = path.resolve(path.dirname(currentFilePath), '..', '..');
+const repoRoot = path.resolve(path.dirname(currentFilePath), "..", "..");
 
-dotenv.config({ path: path.join(repoRoot, 'server/.env'), override: false });
+dotenv.config({ path: path.join(repoRoot, "server/.env"), override: false });
 
 if (!process.env.MONGO_URI) {
-  throw new Error('Frontend integration tests require MONGO_URI to be defined.');
+  throw new Error(
+    "Frontend integration tests require MONGO_URI to be defined."
+  );
 }
 
 if (!process.env.JWT_SECRET) {
-  process.env.JWT_SECRET = 'integration-test-secret';
+  process.env.JWT_SECRET = "integration-test-secret";
 }
 
-const apiBaseUrl = process.env.TEST_BASE_URL || 'http://127.0.0.1:4000/api';
+const apiBaseUrl = process.env.TEST_BASE_URL || "http://127.0.0.1:4000/api";
 const createdPerkIds = new Set();
 
 axios.defaults.adapter = httpAdapter;
@@ -33,27 +35,27 @@ axios.defaults.adapter = httpAdapter;
 beforeAll(async () => {
   const http = axios.create({ baseURL: apiBaseUrl });
 
-
   const credentials = {
     name: `UI Test User ${crypto.randomUUID()}`,
     email: `ui.tester.${Date.now()}@example.com`,
-    password: 'UITest-StrongPass1!'
+    password: "UITest-StrongPass1!",
   };
 
-  const registration = await http.post('/auth/register', credentials);
+  const registration = await http.post("/auth/register", credentials);
   const registrationPayload = registration.data;
 
-  const { api } = await import('../src/api.js');
+  const { api } = await import("../src/api.js");
   api.defaults.baseURL = apiBaseUrl;
 
-  window.localStorage.setItem('token', registrationPayload.token);
+  window.localStorage.setItem("token", registrationPayload.token);
 
-  const seedPerkResponse = await api.post('/perks', {
-    title: 'Integration Preview Benefit',
-    description: 'Baseline record created during setup for deterministic rendering checks.',
-    category: 'travel',
-    merchant: 'Integration Merchant',
-    discountPercent: 15
+  const seedPerkResponse = await api.post("/perks", {
+    title: `Integration Preview Benefit${crypto.randomUUID()}`,
+    description:
+      "Baseline record created during setup for deterministic rendering checks.",
+    category: "travel",
+    merchant: `Integration Merchant${crypto.randomUUID()}`,
+    discountPercent: 15,
   });
 
   const seededPerk = seedPerkResponse.data.perk;
@@ -68,7 +70,7 @@ beforeAll(async () => {
     user: registrationPayload.user,
     seededPerk,
     api,
-    createdPerkIds
+    createdPerkIds,
   };
 });
 
@@ -78,7 +80,10 @@ afterAll(async () => {
   if (context) {
     const authHeaders = { Authorization: `Bearer ${context.token}` };
 
-    const http = axios.create({ baseURL: context.baseUrl, headers: authHeaders });
+    const http = axios.create({
+      baseURL: context.baseUrl,
+      headers: authHeaders,
+    });
 
     await Promise.all(
       Array.from(context.createdPerkIds).map((perkId) =>
@@ -107,26 +112,29 @@ async function removeTestUser(email) {
   `;
 
   await new Promise((resolve, reject) => {
-    const cleanup = spawn(process.execPath, ['--input-type=module', '-'], {
+    const cleanup = spawn(process.execPath, ["--input-type=module", "-"], {
       env: { ...process.env },
-      stdio: ['pipe', 'pipe', 'pipe']
+      stdio: ["pipe", "pipe", "pipe"],
     });
 
     cleanup.stdin.write(script);
     cleanup.stdin.end();
 
-    cleanup.stdout.on('data', (chunk) => {
+    cleanup.stdout.on("data", (chunk) => {
       const text = chunk.toString().trim();
       if (text) console.log(`[cleanup stdout] ${text}`);
     });
-    cleanup.stderr.on('data', (chunk) => {
+    cleanup.stderr.on("data", (chunk) => {
       const text = chunk.toString().trim();
       if (text) console.error(`[cleanup stderr] ${text}`);
     });
 
-    cleanup.on('exit', (code) => {
+    cleanup.on("exit", (code) => {
       if (code === 0) resolve();
-      else reject(new Error('Failed to remove the test user after the suite finished.'));
+      else
+        reject(
+          new Error("Failed to remove the test user after the suite finished.")
+        );
     });
   });
 }
